@@ -1,14 +1,16 @@
 # -*- coding: utf-8 -*-
 """
-MOLLI [2016]
-Medical Physics, Odette Cancer Centre
-Sunnybrook Hospital, Toronto
+SerialUtilz: serialThreads
 
-SERIAL-IO
+author: Mark Semple
+
+Different threads for dealing with Serial Objects
+
+
 """
 
 import threading
-import queue
+# import queue
 import time
 import logging
 
@@ -16,42 +18,15 @@ import serial
 import serial.tools.list_ports
 from PyQt5.QtCore import QThread, pyqtSignal
 
-
-class serialReader(threading.Thread):
-    """ Thread to handle serial communication. When started, this goes.
-        clock begins, initialization protocol is run, writer starts,
-        and then reading-loop begins. at each step of the read, take all
-        the content and throw it into data Queue. Will do sorting later
-    """
-
-    def __init__(self, data_q, com_port, eol=b'!6!'):
-        super().__init__()
-        self.ser = serial.Serial(com_port)
-        self.ser.timeout = 0.1
-        self.ser.close()
-        self.eol = eol
-        self.data_q = data_q
-        self.alive = threading.Event()
-        self.alive.set()
-
-    def run(self):
-        # time.clock()
-        self.ser.open()
-        time.sleep(0.05)
-        while self.alive.isSet():
-            data = readUntil(self.ser, self.eol)
-            self.data_q.put(data)
-        self.ser.reset_input_buffer()
-
-    def join(self, timeout=None):
-        self.alive.clear()
-        threading.Thread.join(self, timeout)
-        time.sleep(0.1)
-        self.ser.close()
+if __name__ == "__main__":
+    import serialFuncs as serFcns
+else:
+    import SerialUtilz.serialFuncs as serFcns
 
 
-# poll for MOLLI!
-class QTSerialPoller(QThread):
+class QtSerialPoller(QThread):
+    """ """
+
     foundCOMPort = pyqtSignal(str)
 
     def __init__(self, maxCount=1, serialName=None, VID=None, PID=None):
@@ -79,9 +54,9 @@ class QTSerialPoller(QThread):
 
             count += 1
             logging.info("Polling for %s" % self.serialName)
-            comPort = FindSpecificCOMPort(PortCaption=self.serialName,
-                                          VID=self.VID,
-                                          PID=self.PID)
+            comPort = serFcns.FindSpecificCOMPort(PortCaption=self.serialName,
+                                                  VID=self.VID,
+                                                  PID=self.PID)
             time.sleep(0.5)
 
         if type(comPort) is list:
@@ -98,49 +73,191 @@ class QTSerialPoller(QThread):
             self.foundCOMPort.emit(comPort)
 
 
-def FindSpecificCOMPort(PortCaption='MOLLI', VID='4D8', PID='F181'):
-    # Scan computer for COM PORTs that match the given string name
-    COM_PORT_ID = None
+class serialWriter(threading.Thread):
+    """ A thread for writing to the COM PORT.
 
-    for port in serial.tools.list_ports.comports():
+        Requires SER as valid serial device
+        Requires txtString as command to repeat over and over
 
-        if PortCaption.lower() in port.description.lower():
-            COM_PORT_ID = port.device
-            break
-
-        elif port.vid is not None and VID in hex(port.vid).upper():
-            COM_PORT_ID = port.device
-            break
-
-        elif port.pid is not None and PID in hex(port.pid).upper():
-            COM_PORT_ID = port.device
-            break
-
-    return COM_PORT_ID
-
-
-def readUntil(ser, eol=b'\r'):
-    leneol = len(eol)
-    line = bytearray()
-    while True:
-        c = ser.read(1)
-        if c:
-            line += c
-            if line[-leneol:] == eol:
-                break
-    return bytes(line)
-
-
-def get_all_from_queue(Q):
     """
-    Generator to yield one after the others all items
-    currently in the queue Q, without any waiting.
+
+    def __init__(self, userSettings={}, txtString=None, ser=None):
+        super(serialWriter, self).__init__()
+
+        if not type(txtString) == str:
+            raise TypeError
+        if not bool(txtString):
+            # raise error
+            print("raise error here..")
+            pass
+
+        self.ser = ser
+        self.userSettings = userSettings
+        self.port_handles = None
+        self.alive = threading.Event()
+        self.alive.set()
+        # self.update_freq = 50
+        # string = "TX 0801"
+        self.command = bytes("%s\r" % (txtString), "UTF-8")
+
+    def run(self):
+
+        self.ser.write(formatWrite("TSTART "))
+
+        while self.alive.isSet():
+            try:
+                self.ser.write(self.command)
+                time.sleep(0.008)
+            except serial.serialException:
+                pass
+        print("Finished writing")
+
+        self.ser.write(serFcns.formatWrite("TSTOP "))
+        self.ser.read(self.ser.inWaiting())
+        # print("setting 9600Baud")
+        # self.ser.write(formatWrite("COMM 00000"))
+
+        self.ser.reset_output_buffer()
+        self.ser.reset_input_buffer()
+
+    def join(self, timeout=None):
+        # self.stop()
+        self.alive.clear()
+        threading.Thread.join(self, timeout)
+
+
+class serialReader(threading.Thread):
+    """ Thread to handle serial communication. When started, this goes.
+        clock begins, initialization protocol is run, writer starts,
+        and then reading-loop begins. at each step of the read, take all
+        the content and throw it into data Queue. Will do sorting later
     """
-    try:
-        while True:
-            yield Q.get_nowait()
-    except queue.Empty:
-        raise StopIteration
+
+    def __init__(self, data_q, com_port, eol=b'!6!'):
+        super().__init__()
+        self.ser = serial.Serial(com_port)
+        self.ser.timeout = 0.1
+        self.ser.close()
+        self.eol = eol
+        self.data_q = data_q
+        self.alive = threading.Event()
+        self.alive.set()
+
+    def run(self):
+        # time.clock()
+        self.ser.open()
+        time.sleep(0.05)
+        while self.alive.isSet():
+            data = serFcns.readUntil(self.ser, self.eol)
+            self.data_q.put(data)
+        self.ser.reset_input_buffer()
+
+    def join(self, timeout=None):
+        self.alive.clear()
+        threading.Thread.join(self, timeout)
+        time.sleep(0.1)
+        self.ser.close()
+
+
+class initComThread(QThread):
+
+    initAurora = pyqtSignal(dict)
+    statusMsg = pyqtSignal(str, int)
+
+    def __init__(self, userSettings={}, auroraInitialized=False, ser=None):
+        QThread.__init__(self)
+        self.userSettings = userSettings
+        self.auroraInitialized = auroraInitialized
+        self.isAlive = True
+        self.ser = ser
+
+    def run(self, comPort=None):
+        """ Thread to Auto-Discover NDI Aurora,
+        then Auto-Connect"""
+
+        if not self.auroraInitialized:
+            print("initializing")
+            if bool(self.ser):
+                self.ser.close()
+            print("serial closed")
+            self.ser.open()
+            print("serial opened")
+            self.ser.flushOutput()
+            print("out buffer reset")
+            self.ser.flushInput()
+            print("in buffer reset")
+            portDict = self.onInitialize(self.ser)
+            if portDict:
+                self.initAurora.emit(portDict)
+
+        else:
+            print("Already initialized")
+
+    def onInitialize(self, ser):
+        """ COMMANDS TO NDI AURORA TO INITIALIZE SYSTEM """
+        ser.timeout = 1
+        portDict = {}
+
+        # print("Reset")
+        ser.sendBreak()  # reset aurora
+        # parseINIT(readTilEnd(ser))
+        rep = ser.readline()
+        if rep == b'':
+            self.statusMsg.emit("no connection made", 2000)
+            return {}
+
+        self.statusMsg.emit("INIT", 0)
+        ser.write(serFcns.formatWrite("INIT "))
+        # parseINIT(readTilEnd(ser))
+        self.statusMsg.emit(ser.readline().decode('UTF-8'), 0)
+
+        self.statusMsg.emit("Change BAUD", 0)
+        ser.write(serFcns.formatWrite("COMM 50001"))  # 115200, handshaking
+        # ser.write(formatWrite("COMM 00001"))  # 9600, handshaking
+
+        # parseINIT(readTilEnd(ser))
+        self.statusMsg.emit(ser.readline().decode('UTF-8'), 0)
+
+        ser.baudrate = 115200  # don't bother making flexible.
+        ser.xonxoff = True
+
+        # ser.reset_output_buffer()
+        # ser.reset_input_buffer()
+
+        ser.timeout = 3
+        self.statusMsg.emit("Assign Port Handles", 0)
+        ser.write(serFcns.formatWrite("PHSR "))
+        nPorts, portNames = serFcns.parsePHSR(ser.readline())
+        self.statusMsg.emit("Found %d port handles" % nPorts, 0)
+
+        if nPorts < 1:
+            self.statusMsg.emit("Unable to find any port handles", 0)
+            ser.close()
+            return {}
+
+        ser.timeout = 1
+        for ind, port in enumerate(portNames):
+
+            # portDict[port] = PortHandle(portID=port, name=portNames[ind])
+
+            self.statusMsg.emit("Init Port Handle %s" % port, 0)
+            ser.write(serFcns.formatWrite("PINIT %s" % port))
+            # self.statusMsg.emit(serFcns.parsePINIT(readTilEnd(ser)), 0)
+
+            # self.statusMsg.emit("Enable Port Handle %s" % port, 0)
+            ser.write(serFcns.formatWrite("PENA %sD" % port))
+            # self.statusMsg.emit(parsePENA(readTilEnd(ser)), 0)
+            # print(ser.readline())
+
+        ser.timeout = 2
+        self.statusMsg.emit("Starting Aurora", 0)
+        ser.write(serFcns.formatWrite("TSTART "))
+        # parseTSTART(readTilEnd(ser))
+        self.statusMsg.emit(ser.readline().decode('UTF-8'), 0)
+        self.statusMsg.emit("Ready to track", 0)
+        ser.timeout = 0.1
+
+        return portDict
 
 
 class LiveDataFeed(object):
@@ -173,12 +290,4 @@ class LiveDataFeed(object):
 
 
 if __name__ == "__main__":
-
-    molli_PortID = FindSpecificCOMPort('MOLLI Surgical Probe')
-    print("Molli found at: ", molli_PortID)
-    data_q = 1
-    ser = serial.Serial(molli_PortID)
-    SIO = serialReader(data_q=data_q, com_port='COM9')
-    SIO.start()
-    time.sleep(2)
-    SIO.join()
+    pass
