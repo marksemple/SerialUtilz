@@ -53,6 +53,7 @@ def FindSpecificCOMPort(PortCaption='PortCaption', VID='VID', PID='PID'):
 
 
 def formatWrite(command, eol='\r'):
+    print(command + eol)
     return bytes(command + eol, "UTF-8")
 
 
@@ -71,6 +72,7 @@ def readUntil(ser, eol=b'\r'):
 
 
 def InsertDecimal(stringList, posFromLeft):
+    """  """
     numList = []
     for string in stringList:
         L = len(string)
@@ -79,7 +81,7 @@ def InsertDecimal(stringList, posFromLeft):
     return numList
 
 
-def parseINIT(bytestring):
+def parseSerial(bytestring):
     text = bytestring.decode("UTF-8")
     print(text)
 
