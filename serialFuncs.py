@@ -19,7 +19,6 @@ import os
 # import serial
 # from PyQt5.QtCore import QThread, pyqtSignal
 
-
 if os.name == "posix":  # catch for Apple computers
     import serial.tools.list_ports_osx as list_ports
 else:
@@ -97,18 +96,6 @@ def parsePHSR(bytestring):
     for port in range(0, nPorts):
         portNames.append(text[2 + 5 * port: 4 + 5 * port])
     return nPorts, portNames
-
-
-def get_all_from_queue(Q):
-    """
-    Generator to yield one after the others all items
-    currently in the queue Q, without any waiting.
-    """
-    try:
-        while True:
-            yield Q.get_nowait()
-    except queue.Empty:
-        raise StopIteration
 
 
 def get_item_from_queue(Q, timeout=0.01):

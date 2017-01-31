@@ -10,7 +10,7 @@ Different threads for dealing with Serial Objects
 """
 
 import threading
-# import queue
+import queue
 import time
 import logging
 
@@ -287,6 +287,18 @@ class LiveDataFeed(object):
     def read_data(self):
         self.has_new_data = False
         return self.cur_data
+
+
+def get_all_from_queue(Q):
+    """
+    Generator to yield one after the others all items
+    currently in the queue Q, without any waiting.
+    """
+    try:
+        while True:
+            yield Q.get_nowait()
+    except queue.Empty:
+        raise StopIteration
 
 
 if __name__ == "__main__":
