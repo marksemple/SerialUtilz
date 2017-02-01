@@ -16,7 +16,7 @@ import queue
 # import logging
 import os
 
-# import serial
+import serial
 # from PyQt5.QtCore import QThread, pyqtSignal
 
 if os.name == "posix":  # catch for Apple computers
@@ -50,6 +50,17 @@ def FindSpecificCOMPort(PortCaption='PortCaption', VID='VID', PID='PID'):
             break
 
     return COM_PORT_ID
+
+
+def isPortFree(com_port):
+    try:
+        ser = serial.Serial(com_port)
+        ser.close()
+        return True
+    except serial.SerialException as SE:
+        print(SE)
+        print("unable to connect to %s", com_port)
+        return False
 
 
 def formatWrite(command, eol='\r'):

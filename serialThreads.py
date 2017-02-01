@@ -85,11 +85,15 @@ class serialReader(threading.Thread):
                  ser=None,
                  com_port=None,
                  baud=9600,
-                 txtString=b'',
-                 writeMode=True,
-                 eol=b'!6!'):
+                 txtString='',
+                 designatedWriter=True,
+                 eol_write='',
+                 eol_read=''):
 
-        super().__init__()
+        super().__init__(name='SerialReaderThread')
+
+        assert(type(eol_write) == str)
+        assert(type(eol_read) == str)
 
         # Accepts either a serial object, or a serial address (makes object)
         if ser is None and com_port is None:
@@ -102,26 +106,28 @@ class serialReader(threading.Thread):
             print("serial reader: using serial object")
             self.ser = ser
 
-        if writeMode:
-            print("writeMode")
+        self.ser.timeout = 0.1
+        self.ser.close()
+        self.eol_read = bytes(eol_read, 'utf-8')
+        self.data_q = data_q
+        self.designatedWriter = designatedWriter
+        print('EOL_READ:', self.eol_read)
+        self.alive = threading.Event()
+        self.alive.set()
+        self.command = b''
+
+        if bool(txtString):
+            self.command += bytes(txtString + eol_write, 'UTF-8')
+
+        if designatedWriter:
+            print("designatedWriter")
             self.COMwriter = serialWriter(txtString=txtString,
+                                          eol_write=eol_write,
                                           ser=self.ser)
-            # time.sleep(0.1)
-            # self.COMwriter.start()
             print('starting COM write')
         else:
             pass
 
-        self.command = serFcns.formatWrite(txtString)
-        self.writeMode = writeMode
-
-        self.ser.close()
-        self.ser.timeout = 0.05
-        self.eol = eol
-        self.data_q = data_q
-
-        self.alive = threading.Event()
-        self.alive.set()
 
     def run(self):
         """ Thread to handle serial communication. When started, this goes.
@@ -133,27 +139,23 @@ class serialReader(threading.Thread):
         self.ser.open()
         time.sleep(0.1)
 
-        if self.writeMode:
+        print("STARTING")
+
+        if self.designatedWriter:
             self.COMwriter.start()
 
         while self.alive.isSet():
-            # try:
 
-            if not self.writeMode:
+            if not self.designatedWriter and bool(self.command):
                 self.ser.write(self.command)
 
-            data = serFcns.readUntil(self.ser, self.eol)
+            data = serFcns.readUntil(self.ser, self.eol_read)
             self.data_q.put(data)
-
-            # except:
-                # # print(SE)
-                # print("an error in stopping reader...")
-                # break
 
     def join(self, timeout=None):
         self.alive.clear()
         time.sleep(0.25)
-        if self.writeMode:
+        if self.designatedWriter:
             self.COMwriter.join(0.02)
         self.ser.reset_output_buffer()
         self.ser.reset_input_buffer()
@@ -168,7 +170,7 @@ class serialWriter(threading.Thread):
     """
 
     def __init__(self, txtString=None, ser=None, com_port=None, baud=9600):
-        super().__init__()
+        super().__init__(name='SerialWriterThread')
 
         if ser is None and com_port is None:
             print("No Port!")
