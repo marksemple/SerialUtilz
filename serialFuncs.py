@@ -14,12 +14,13 @@ Optimized for PyQt5
 import queue
 # import time
 # import logging
+import sys
 import os
 
 import serial
 # from PyQt5.QtCore import QThread, pyqtSignal
 
-if os.name == "posix":  # catch for Apple computers
+if sys.platform == "darwin":  # catch for Apple computers
     import serial.tools.list_ports_osx as list_ports
 else:
     import serial.tools.list_ports as list_ports
@@ -56,6 +57,7 @@ def isPortFree(com_port):
     try:
         ser = serial.Serial(com_port)
         ser.close()
+        print("port %s is free" % com_port)
         return True
     except serial.SerialException as SE:
         print(SE)
