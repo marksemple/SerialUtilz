@@ -128,7 +128,6 @@ class serialReader(threading.Thread):
         else:
             pass
 
-
     def run(self):
         """ Thread to handle serial communication. When started, this goes.
             clock begins, initialization protocol is run, writer starts,
@@ -211,14 +210,12 @@ class serialWriter(threading.Thread):
         threading.Thread.join(self, timeout)
 
 
-class initComThread(QThread):
-    """ Iniitializes Northern Digital AURORA EM tracker
-    """
+class QComThread(QThread):
 
-    initAurora = pyqtSignal()
-    statusMsg = pyqtSignal(str, int)
+    def __init__(self, serArgs,
+                 ser=None, com_port=None,
+                 *args, **kwargs):
 
-    def __init__(self, ser=None, com_port=None, baud=9600, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         if ser is None and com_port is None:
@@ -226,30 +223,58 @@ class initComThread(QThread):
             return
 
         elif ser is None:
-            self.ser = serial.Serial(port=com_port, baudrate=baud)
+            self.ser = serial.Serial(port=com_port,
+                                     **serArgs)
 
         else:
             self.ser = ser
 
-        # self.ser.close()
-        self.ser.timeout = 1
+        # self.ser.timeout = timeout
+        self.ser.close()
         self.isAlive = True
 
-    def run(self, comPort=None):
-        """ Thread to Auto-Discover NDI Aurora,
-        then Auto-Connect"""
 
-        print("initializing")
+class QComInitThread(QComThread):
+
+    initDone = pyqtSignal()
+    # statusMsg = pyqtSignal(str, int)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def run(self):
+        print("Beginning Initialization")
+
         self.ser.close()
         print("serial closed")
+
         self.ser.open()
         print("serial opened")
-        self.ser.flushOutput()
-        print("out buffer reset")
-        self.ser.flushInput()
-        print("in buffer reset")
-        self.onInitialize(self.ser)
-        self.initAurora.emit()
+
+        self.ser.reset_output_buffer()
+        self.ser.reset_input_buffer()
+
+        self.onInitialize()
+
+        self.initDone.emit()
+        self.ser.close()
+
+    def onInitialize(self):
+        """ Device-Specific -- Overwrite this function upon inheritance"""
+        print("boop")
+        pass
+
+
+class QComReaderThread(QComThread):
+    pass
+
+
+
+class QAuroraThread(threading.Thread):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        pass
+
 
     def onInitialize(self, ser):
         """ COMMANDS TO NDI AURORA TO INITIALIZE SYSTEM """
