@@ -65,6 +65,22 @@ def isPortFree(com_port):
         return False
 
 
+def makeSerialObject(ser=None, com_port=None,
+                     baudrate=9600, serName='SerialObj'):
+    # Accepts either a serial object, or a serial address (makes object)
+    if ser is None and com_port is None:
+        print("%s: No Port!" % serName)
+        return False
+        # Raise Error
+    elif ser is None:
+        ser = serial.Serial(port=com_port, baudrate=baudrate)
+        print("%s: using COM Port %d" % (serName, com_port))
+    else:
+        print("%s: using Serial Object" % (serName))
+        ser = ser
+
+    return ser
+
 def formatWrite(command, eol='\r'):
     print(command + eol)
     return bytes(command + eol, "UTF-8")
@@ -101,7 +117,7 @@ def parseSerial(bytestring):
 
 def parsePHSR(bytestring):
     text = bytestring.decode("UTF-8")
-    print(text)
+    print('reply text:', text)
     try:
         nPorts = int(text[0:2])
     except ValueError as ve:
