@@ -14,12 +14,13 @@ Optimized for PyQt5
 import queue
 # import time
 # import logging
+import sys
 import os
 
-# import serial
+import serial
 # from PyQt5.QtCore import QThread, pyqtSignal
 
-if os.name == "posix":  # catch for Apple computers
+if sys.platform == "darwin":  # catch for Apple computers
     import serial.tools.list_ports_osx as list_ports
 else:
     import serial.tools.list_ports as list_ports
@@ -52,7 +53,36 @@ def FindSpecificCOMPort(PortCaption='PortCaption', VID='VID', PID='PID'):
     return COM_PORT_ID
 
 
+def isPortFree(com_port):
+    try:
+        ser = serial.Serial(com_port)
+        ser.close()
+        print("port %s is free" % com_port)
+        return True
+    except serial.SerialException as SE:
+        print(SE)
+        print("unable to connect to %s", com_port)
+        return False
+
+
+def makeSerialObject(ser=None, com_port=None,
+                     baudrate=9600, serName='SerialObj'):
+    # Accepts either a serial object, or a serial address (makes object)
+    if ser is None and com_port is None:
+        print("%s: No Port!" % serName)
+        return False
+        # Raise Error
+    elif ser is None:
+        ser = serial.Serial(port=com_port, baudrate=baudrate)
+        print("%s: using COM Port %d" % (serName, com_port))
+    else:
+        print("%s: using Serial Object" % (serName))
+        ser = ser
+
+    return ser
+
 def formatWrite(command, eol='\r'):
+    print(command + eol)
     return bytes(command + eol, "UTF-8")
 
 
@@ -71,6 +101,7 @@ def readUntil(ser, eol=b'\r'):
 
 
 def InsertDecimal(stringList, posFromLeft):
+    """  """
     numList = []
     for string in stringList:
         L = len(string)
@@ -79,14 +110,14 @@ def InsertDecimal(stringList, posFromLeft):
     return numList
 
 
-def parseINIT(bytestring):
+def parseSerial(bytestring):
     text = bytestring.decode("UTF-8")
     print(text)
 
 
 def parsePHSR(bytestring):
     text = bytestring.decode("UTF-8")
-    print(text)
+    print('reply text:', text)
     try:
         nPorts = int(text[0:2])
     except ValueError as ve:
