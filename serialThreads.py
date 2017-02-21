@@ -206,9 +206,6 @@ class QComThread(QThread):
 
 class QComInitThread(QComThread):
 
-    initDone = pyqtSignal()
-    # statusMsg = pyqtSignal(str, int)
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -226,7 +223,8 @@ class QComInitThread(QComThread):
 
         init_out = self.onInitialize()
         if init_out:
-            self.initDone.emit()
+            # self.initDone.emit()
+            pass
         else:
             print("init failed")
             self.ser.close()
@@ -241,15 +239,6 @@ class QComInitThread(QComThread):
 class QComReaderThread(QComThread):
     pass
 
-
-class QAuroraThread(threading.Thread):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        pass
-
-
-    def onInitialize(self, ser):
-        pass
 
 
 class LiveDataFeed(object):
