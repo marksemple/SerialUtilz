@@ -81,12 +81,13 @@ def makeSerialObject(ser=None, com_port=None,
 
     return ser
 
+
 def formatWrite(command, eol='\r'):
     print(command + eol)
     return bytes(command + eol, "UTF-8")
 
 
-def readUntil(ser, eol=b'\r'):
+def readUntil(ser, eol=b'\r', timeout=1):
     """ When communicating with serial device """
 
     leneol = len(eol)

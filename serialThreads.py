@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 SerialUtilz: serialThreads
 
@@ -222,12 +221,7 @@ class QComInitThread(QComThread):
         self.ser.reset_input_buffer()
 
         init_out = self.onInitialize()
-        if init_out:
-            # self.initDone.emit()
-            pass
-        else:
-            print("init failed")
-            self.ser.close()
+
         self.ser.close()
 
     def onInitialize(self):
