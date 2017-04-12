@@ -128,7 +128,6 @@ class serialReader(threading.Thread):
         else:
             pass
 
-
     def run(self):
         """ Thread to handle serial communication. When started, this goes.
             clock begins, initialization protocol is run, writer starts,
