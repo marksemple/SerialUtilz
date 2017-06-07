@@ -130,6 +130,21 @@ def parsePHSR(bytestring):
     return nPorts, portNames
 
 
+def dissectString_From_To(string_text=b'', start_tag=b'!5!', end_tag=b'!6!'):
+    # Returns substring that is found closest to end
+    # bracketed by start_tag and end_tag
+    # if unable to find both start_tag and end_tag in string_text: returns ''
+
+    found_ending = string_text.rfind(end_tag)
+    found_starting = string_text[0:found_ending].rfind(start_tag)
+
+    if found_ending == -1 or found_starting == -1:
+        return b''
+
+    substring = string_text[found_starting:(found_ending + 3)]
+    return substring
+
+
 def get_item_from_queue(Q, timeout=0.01):
     """
     Attempts to retrieve an item from the queue Q. If Q is
